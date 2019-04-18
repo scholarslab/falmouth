@@ -1,0 +1,77 @@
+version: '2'
+
+services:
+  falmouth_proxy:
+    image: nginx
+    container_name: falmouth_proxy
+    restart: always
+    depends_on:
+      - falmouth_solr
+      - falmouth_db
+      - falmouth_omeka
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=thenetwork"
+      - "traefik.port=80"
+      - "traefik.backend=falmouth_proxy"
+      - "traefik.frontend.rule=Host:falmouth.internal.lib.virginia.edu"
+
+  falmouth_solr:
+    image: solr:7
+    container_name: falmouth_solr
+    restart: always
+    volumes:
+      - ./web.xml:/opt/solr/web.xml
+      - ./managed-schema:/opt/solr/managed-schema
+      - ./load-data:/opt/docker-solr/scripts/load-data
+      - ./falmouth.json:/opt/solr/datafile.json
+      - ./solr.in.sh:/opt/solr/solr.in.sh
+    entrypoint:
+      - docker-entrypoint.sh
+      - load-data
+      - falmouth
+    expose:
+      - "8983"
+    labels:
+      - "traefik.enable=false"
+
+  falmouth_db:
+    image: mysql:5.7
+    container_name: falmouth_db
+    depends_on:
+      - falmouth_solr
+    volumes:
+      - ./initial_sql/falmouth_testing.sql:/docker-entrypoint-initdb.d/falmouth_production.sql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mysqlpass
+      MYSQL_DATABASE: omeka
+      MYSQL_USER: omekauser
+      MYSQL_PASSWORD: omekapass
+    expose:
+      - "3306"
+    labels:
+      - "traefik.enable=false"
+
+  falmouth_omeka:
+    build:
+      context: .
+    image: falmouth:1.0
+    container_name: falmouth_omeka
+    depends_on:
+      - falmouth_db
+      - falmouth_solr
+    volumes:
+      - ./omeka:/var/www/html/
+    restart: always
+    expose:
+      - "80"
+    labels:
+      - "traefik.enable=false"
+
+networks:
+  default:
+    external:
+      name: thenetwork
