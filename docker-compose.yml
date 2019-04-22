@@ -16,7 +16,8 @@ services:
       - "traefik.docker.network=thenetwork"
       - "traefik.port=80"
       - "traefik.backend=falmouth_proxy"
-      - "traefik.frontend.rule=Host:falmouth.internal.lib.virginia.edu"
+        #- "traefik.frontend.rule=Host:falmouth.internal.lib.virginia.edu"
+      - "traefik.frontend.rule=Host:falmouth.lib.virginia.edu"
 
   falmouth_solr:
     image: solr:7
